@@ -1,71 +1,131 @@
 import React from "react";
 import {
   AbsoluteFill,
-  interpolate,
+  Sequence,
   useCurrentFrame,
 } from "remotion";
+
+import { TimelineGraphic } from "./motion/TimelineGraphic";
+
+import scenePlan from "./scene-plan.json";
+
+type Scene = {
+  sentence: string;
+  enabled: boolean;
+  type: string;
+  reason: string;
+  animation: string;
+  placement: string;
+  intensity: string;
+  fact_check_required: boolean;
+  start?: number;
+  end?: number;
+  duration?: number;
+  timing_source?: string;
+  visual?: {
+    headline?: string;
+    subheadline?: string;
+    data?: {
+      start_label?: string;
+      end_label?: string;
+      emphasis?: string;
+    };
+  };
+};
+
+type ScenePlan = {
+  version: string;
+  director: string;
+  scenes: Scene[];
+};
+
+const plan = scenePlan as ScenePlan;
+
+const FPS = 30;
+
+const SECONDS_TO_FRAMES = (seconds: number) =>
+  Math.round(seconds * FPS);
 
 export const Main: React.FC = () => {
   const frame = useCurrentFrame();
 
-  const scale = interpolate(
-    frame,
-    [0, 300],
-    [1, 1.08],
-    { extrapolateRight: "clamp" }
+  const currentSceneIndex = plan.scenes.findIndex(
+    (scene) => {
+      const start = SECONDS_TO_FRAMES(scene.start ?? 0);
+      const end = SECONDS_TO_FRAMES(scene.end ?? 0);
+
+      return frame >= start && frame < end;
+    }
   );
 
-  const opacity = interpolate(
-    frame,
-    [0, 25, 270, 300],
-    [0, 1, 1, 0],
-    { extrapolateRight: "clamp" }
-  );
+  const currentScene =
+    currentSceneIndex >= 0
+      ? plan.scenes[currentSceneIndex]
+      : undefined;
+
+  if (!currentScene) {
+    return (
+      <AbsoluteFill
+        style={{
+          background: "#000000",
+        }}
+      />
+    );
+  }
+
+  const sceneStart =
+    SECONDS_TO_FRAMES(currentScene.start ?? 0);
+
+  const sceneEnd =
+    SECONDS_TO_FRAMES(currentScene.end ?? 0);
+
+  const localFrame =
+    frame - sceneStart;
+
+  const sceneDuration =
+    Math.max(sceneEnd - sceneStart, 1);
 
   return (
     <AbsoluteFill
       style={{
-        background:
-          "radial-gradient(circle at 50% 45%, #182033 0%, #070910 42%, #000000 100%)",
-        color: "white",
-        fontFamily: "Arial, sans-serif",
+        background: "#000000",
         overflow: "hidden",
       }}
     >
-      <AbsoluteFill
-        style={{
-          transform: `scale(${scale})`,
-          opacity,
-          justifyContent: "center",
-          alignItems: "center",
-          padding: 120,
-        }}
-      >
-        <div
-          style={{
-            fontSize: 64,
-            fontWeight: 600,
-            letterSpacing: 2,
-            textAlign: "center",
-            maxWidth: 1500,
-            textShadow: "0 0 30px rgba(120,160,255,.25)",
-          }}
-        >
-          AI MOTION STUDIO
-        </div>
+      {/* =====================================================
+          ÁREA RESERVADA PARA O VÍDEO/IMAGEM PRINCIPAL
+          O sistema NÃO controla o footage.
+         ===================================================== */}
 
-        <div
-          style={{
-            marginTop: 35,
-            fontSize: 30,
-            opacity: 0.65,
-            letterSpacing: 5,
-            textTransform: "uppercase",
-          }}
-        >
-          Astronomy Documentary
-        </div>
-      </AbsoluteFill>
+      <AbsoluteFill />
+
+      {/* =====================================================
+          MOTION GRAPHICS
+         ===================================================== */}
+
+      {currentScene.enabled &&
+        currentScene.type === "timeline" && (
+          <Sequence
+            from={0}
+            durationInFrames={sceneDuration}
+          >
+            <TimelineGraphic
+              progress={localFrame / sceneDuration}
+              headline={
+                currentScene.visual?.headline
+              }
+              subheadline={
+                currentScene.visual?.subheadline
+              }
+              startLabel={
+                currentScene.visual?.data?.start_label
+              }
+              endLabel={
+                currentScene.visual?.data?.end_label
+              }
+            />
+          </Sequence>
+        )}
     </AbsoluteFill>
   );
 };
