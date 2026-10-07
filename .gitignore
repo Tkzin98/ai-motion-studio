@@ -1,9 +1,0 @@
-node_modules/
-__pycache__/
-*.pyc
-*.backup.tsx
-*.backup.py
-*.backup
-.DS_Store
-*backup*.tsx
-*backup*.py
